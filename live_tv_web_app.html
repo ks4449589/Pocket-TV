@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Live TV Player</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      background-color: #0b1120 !important;
+      color: #f1f5f9 !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      width: 100%;
+      overflow-x: hidden;
+    }
+
+    .app-container {
+      display: flex;
+      flex-direction: row;
+      min-height: 100vh;
+      width: 100%;
+      background: #0b1120;
+    }
+
+    /* Left Sidebar */
+    .sidebar {
+      width: 250px;
+      background-color: #0f172a;
+      border-right: 1px solid #1e293b;
+      padding: 20px 14px;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .brand-header {
+      font-size: 20px;
+      font-weight: 800;
+      color: #ef4444;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+      padding-left: 6px;
+    }
+
+    .brand-header span {
+      color: #ffffff;
+      font-size: 19px;
+    }
+
+    .category-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      overflow-y: auto;
+    }
+
+    .cat-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: #94a3b8;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s ease-in-out;
+    }
+
+    .cat-btn:hover, .cat-btn.active {
+      background-color: #2563eb;
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .cat-badge {
+      background: rgba(255, 255, 255, 0.15);
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 10px;
+    }
+
+    /* Main Grid View */
+    .main-content {
+      flex: 1;
+      padding: 22px 28px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .content-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 14px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .content-header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #f8fafc;
+    }
+
+    .badge-fhd {
+      background: #1e293b;
+      color: #38bdf8;
+      border: 1px solid #334155;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    .channel-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 14px;
+    }
+
+    /* Channel Card */
+    .channel-card {
+      background-color: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 14px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+      position: relative;
+    }
+
+    .channel-card:hover, .channel-card:focus {
+      border-color: #38bdf8;
+      background-color: #273549;
+      transform: translateY(-2px);
+      outline: none;
+    }
+
+    .card-img-wrap {
+      width: 100%;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 8px;
+      padding: 4px;
+      overflow: hidden;
+    }
+
+    .card-img-wrap img {
+      max-width: 90px;
+      max-height: 46px;
+      object-fit: contain;
+    }
+
+    .logo-badge {
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 12px;
+      border-radius: 6px;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    }
+
+    .card-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #e2e8f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 100%;
+    }
+
+    .live-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      background: #22c55e;
+      border-radius: 50%;
+      margin-right: 4px;
+    }
+
+    /* Modal Video Player */
+    .player-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.95);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 99999;
+      padding: 16px;
+    }
+
+    .player-modal.open {
+      display: flex;
+    }
+
+    .player-header {
+      width: 100%;
+      max-width: 880px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .now-playing {
+      font-size: 16px;
+      font-weight: 700;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .player-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-close {
+      background: #ef4444;
+      color: #ffffff;
+    }
+
+    .btn-server {
+      background: #0284c7;
+      color: #ffffff;
+    }
+
+    .btn-external {
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    .video-viewport {
+      width: 100%;
+      max-width: 880px;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #334155;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+      position: relative;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      display: block;
+    }
+
+    .stream-status {
+      position: absolute;
+      bottom: 12px;
+      left: 14px;
+      font-size: 12px;
+      color: #94a3b8;
+      background: rgba(0,0,0,0.8);
+      padding: 4px 10px;
+      border-radius: 6px;
+      pointer-events: none;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .app-container {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        padding: 12px;
+        border-right: none;
+        border-bottom: 1px solid #1e293b;
+      }
+      .brand-header {
+        margin-bottom: 10px;
+      }
+      .category-list {
+        flex-direction: row;
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 4px;
+      }
+      .cat-btn {
+        width: auto;
+        padding: 8px 12px;
+        flex-shrink: 0;
+      }
+      .main-content {
+        padding: 14px;
+      }
+      .channel-grid {
+        grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+        gap: 8px;
+      }
+      .channel-card {
+        padding: 10px 6px;
+      }
+      .card-img-wrap {
+        height: 44px;
+      }
+      .card-img-wrap img {
+        max-width: 75px;
+        max-height: 40px;
+      }
+      .card-title {
+        font-size: 11px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Left Navigation Sidebar -->
+    <aside class="sidebar">
+      <div class="brand-header">
+        📺 <span>Live TV</span>
+      </div>
+      <nav class="category-list" id="catNav"></nav>
+    </aside>
+
+    <!-- Main Channels Grid -->
+    <main class="main-content">
+      <div class="content-header">
+        <h1 id="pageHeading">All <span class="badge-fhd" id="countBadge">1080p FHD</span></h1>
+      </div>
+      <div class="channel-grid" id="channelGrid"></div>
+    </main>
+  </div>
+
+  <!-- Video Player Modal -->
+  <div class="player-modal" id="videoModal">
+    <div class="player-header">
+      <div class="now-playing">
+        <span class="live-dot"></span>
+        <span id="playingTitle">Channel Name</span>
+      </div>
+      <div class="player-actions">
+        <button id="switchStreamBtn" class="btn btn-server">🔄 Server 2</button>
+        <a id="extStreamBtn" href="#" target="_blank" class="btn btn-external">↗ Open Direct</a>
+        <button id="closeModalBtn" class="btn btn-close">✕ Close</button>
+      </div>
+    </div>
+    <div class="video-viewport">
+      <video id="livePlayer" controls autoplay playsinline></video>
+      <div class="stream-status" id="streamStatus">Connecting...</div>
+    </div>
+  </div>
+
+  <script>
+    const channels = [
+      // --- HINDI SERIALS & ENTERTAINMENT (LADIES SPECIAL) ---
+      {
+        name: "Dangal TV",
+        category: "Entertainment",
+        logoType: "badge",
+        badgeText: "DANGAL",
+        badgeBg: "linear-gradient(135deg, #b91c1c, #dc2626)",
+        badgeColor: "#ffffff",
+        stream: "https://live-dangal.akamaized.net/liveabr/playlist.m3u8",
+        backupStream: "https://tvs1.aynaott.com/DangalTV/index.m3u8"
+      },
+      {
+        name: "Dangal 2",
+        category: "Entertainment",
+        logoType: "badge",
+        badgeText: "DANGAL 2",
+        badgeBg: "linear-gradient(135deg, #1e3a8a, #2563eb)",
+        badgeColor: "#facc15",
+        stream: "https://live-dangal2.akamaized.net/liveabr/playlist.m3u8",
+        backupStream: "https://live-dangal.akamaized.net/liveabr/playlist.m3u8"
+      },
+      {
+        name: "Shemaroo Umang",
+        category: "Entertainment",
+        logo: "https://jiotvimages.cdn.jio.com/dare_images/images/Shemaroo_Umang.png",
+        stream: "https://d35j504z0x2vu2.cloudfront.net/v1/master/0bc8e8376bd8417a1b6761138aa41c26c7309312/shemaroo-umang-plus/master.m3u8",
+        backupStream: "https://tvs1.aynaott.com/ShemarooTV/index.m3u8"
+      },
+      {
+        name: "Shemaroo TV",
+        category: "Entertainment",
+        logo: "https://jiotvimages.cdn.jio.com/dare_images/images/Shemaroo_TV.png",
+        stream: "https://tvs1.aynaott.com/ShemarooTV/index.m3u8",
+        backupStream: "https://d35j504z0x2vu2.cloudfront.net/v1/master/0bc8e8376bd8417a1b6761138aa41c26c7309312/shemaroo-umang-plus/master.m3u8"
+      },
+      {
+        name: "Star Utsav",
+        category: "Entertainment",
+        logoType: "badge",
+        badgeText: "★ UTSAV",
+        badgeBg: "linear-gradient(135deg, #7c2d12, #ea580c)",
+        badgeColor: "#ffffff",
+        stream: "https://d1g8wgjurz8via.cloudfront.net/bpk-tv/Zeeanmol1/default/zeeanmol1.m3u8",
+        backupStream: "https://live-dangal.akamaized.net/liveabr/playlist.m3u8"
+      },
+      {
+        name: "Zee Anmol",
+        category: "Entertainment",
+        logoType: "badge",
+        badgeText: "ZEE अनमोल",
+        badgeBg: "linear-gradient(135deg, #4c1d95, #7c3aed)",
+        badgeColor: "#fde047",
+        stream: "https://d1g8wgjurz8via.cloudfront.net/bpk-tv/Zeeanmol1/default/zeeanmol1.m3u8",
+        backupStream: "https://d1g8wgjurz8via.cloudfront.net/bpk-tv/Andtv1/default/andtv1.m3u8"
+      },
+      {
+        name: "Sony Pal",
+        category: "Entertainment",
+        logoType: "badge",
+        badgeText: "SONY पल",
+        badgeBg: "linear-gradient(135deg, #064e3b, #059669)",
+        badgeColor: "#ffffff",
+        stream: "https://d1g8wgjurz8via.cloudfront.net/bpk-tv/Zeeanmol1/default/zeeanmol1.m3u8",
+        backupStream: "https://live-dangal2.akamaized.net/liveabr/playlist.m3u8"
+      },
+      {
+        name: "Colors Rishtey",
+        category: "Entertainment",
+        logoType: "badge",
+        badgeText: "RISHTEY",
+        badgeBg: "linear-gradient(135deg, #be185d, #ec4899)",
+        badgeColor: "#ffffff",
+        stream: "https://bldcmprod-cdn.toffeelive.com/cdn/live/colors_rishtey/playlist.m3u8",
+        backupStream: "https://live-dangal.akamaized.net/liveabr/playlist.m3u8"
+      },
+      {
+        name: "&TV HD",
+        category: "Entertainment",
+        logo: "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_SYMANDTV/images/LOGO_HD/LOGO_HD_image.png",
+        stream: "https://d1g8wgjurz8via.cloudfront.net/bpk-tv/Andtv1/default/andtv1.m3u8",
+        backupStream: "https://d1g8wgjurz8via.cloudfront.net/bpk-tv/Zeeanmol1/default/zeeanmol1.m3u8"
+      },
+      {
+        name: "DD National (DD1)",
+        category: "Entertainment",
+        logoType: "badge",
+        badgeText: "DD 1",
+        badgeBg: "linear-gradient(135deg, #1e3a8a, #0284c7)",
+        badgeColor: "#fbbf24",
+        stream: "https://d75dqofg5kmfk.cloudfront.net/bpk-tv/Ddnational/default/index.m3u8",
+        backupStream: "https://d75dqofg5kmfk.cloudfront.net/bpk-tv/Ddbharti/default/index.m3u8"
+      },
+      {
+        name: "DD Bharati",
+        category: "Entertainment",
+        logoType: "badge",
+        badgeText: "DD भारती",
+        badgeBg: "linear-gradient(135deg, #831843, #be185d)",
+        badgeColor: "#ffffff",
+        stream: "https://d75dqofg5kmfk.cloudfront.net/bpk-tv/Ddbharti/default/index.m3u8",
+        backupStream: "https://d75dqofg5kmfk.cloudfront.net/bpk-tv/Ddnational/default/index.m3u8"
+      },
+
+      // --- MOVIES CHANNELS ---
+      {
+        name: "B4U Movies",
+        category: "Movies",
+        logo: "https://jiotvimages.cdn.jio.com/dare_images/images/B4U_Movies.png",
+        stream: "https://cdnb4u.wiseplayout.com/B4U_Movies/master.m3u8",
+        backupStream: "https://streams.tangotv.in/B4UMOVIES/ORIGIN/index.m3u8"
+      },
+      {
+        name: "B4U Kadak",
+        category: "Movies",
+        logo: "https://jiotvimages.cdn.jio.com/dare_images/images/B4U_Kadak.png",
+        stream: "https://cdnb4u.wiseplayout.com/B4U_Kadak/master.m3u8",
+        backupStream: "https://streams.tangotv.in/B4UKADAK/ORIGIN/index.m3u8"
+      },
+      {
+        name: "B4U Bhojpuri",
+        category: "Movies",
+        logo: "https://jiotvimages.cdn.jio.com/dare_images/images/B4U_Bhojpuri.png",
+        stream: "https://cdnb4u.wiseplayout.com/B4U_Bhojpuri/master.m3u8",
+        backupStream: "https://live-bhojpuri.akamaized.net/liveabr/playlist.m3u8"
+      },
+      {
+        name: "Bhojpuri Cinema",
+        category: "Movies",
+        logo: "https://jiotvimages.cdn.jio.com/dare_images/images/Bhojpuri_Cinema.png",
+        stream: "https://live-bhojpuri.akamaized.net/liveabr/playlist.m3u8",
+        backupStream: "https://cdnb4u.wiseplayout.com/B4U_Bhojpuri/master.m3u8"
+      },
+
+      // --- NEWS CHANNELS (HINDI) ---
+      {
+        name: "Aaj Tak HD",
+        category: "News",
+        logo: "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_AAJ_TAK/images/LOGO_HD/image.png",
+        stream: "https://feeds.intoday.in/aajtak/api/aajtakhd/master.m3u8",
+        backupStream: "https://feeds.intoday.in/aajtak/api/aajtak/master.m3u8"
+      },
+      {
+        name: "Zee News Live",
+        category: "News",
+        logo: "https://jiotvimages.cdn.jio.com/dare_images/images/Zee_News.png",
+        stream: "https://dknttpxmr0dwf.cloudfront.net/index_57.m3u8",
+        backupStream: "https://dwby15d04agvq.cloudfront.net/index_5.m3u8"
+      },
+      {
+        name: "Zee Business",
+        category: "News",
+        logo: "https://jiotvimages.cdn.jio.com/dare_images/images/Zee_Business.png",
+        stream: "https://dwby15d04agvq.cloudfront.net/index_5.m3u8",
+        backupStream: "https://dknttpxmr0dwf.cloudfront.net/index_57.m3u8"
+      },
+      {
+        name: "ABP News",
+        category: "News",
+        logo: "https://jiotvimages.cdn.jio.com/dare_images/images/ABP_News.png",
+        stream: "https://d1rc86nwwc9fag.cloudfront.net/vglive-sk-472500/abpnews/master.m3u8",
+        backupStream: "https://abplivetv.akamaized.net/hls/live/2043010/hindi/master.m3u8"
+      },
+      {
+        name: "ABP Ganga",
+        category: "News",
+        logo: "https://jiotvimages.cdn.jio.com/dare_images/images/ABP_Ganga.png",
+        stream: "https://d2l4ar6y3mrs4k.cloudfront.net/live-streaming/ganga-livetv/master.m3u8",
+        backupStream: "https://d1rc86nwwc9fag.cloudfront.net/vglive-sk-472500/abpnews/master.m3u8"
+      },
+      {
+        name: "Amar Ujala",
+        category: "News",
+        logo: "https://jiotvimages.cdn.jio.com/dare_images/images/Amar_Ujala.png",
+        stream: "https://amarujala.ottlive.co.in/amarujala/index.m3u8",
+        backupStream: "https://cdn.ottlive.co.in/bharat24/index.m3u8"
+      },
+      {
+        name: "Bharat 24",
+        category: "News",
+        logo: "https://dtil.tmsimg.com/assets/s142710_ld_h15_aa.png?lock=720x540",
+        stream: "https://cdn.ottlive.co.in/bharat24/index.m3u8",
+        backupStream: "https://stream.ottlive.co.in/aajkikhabar/index.m3u8"
+      },
+      {
+        name: "DD News Live",
+        category: "News",
+        logo: "https://jiotvimages.cdn.jio.com/dare_images/images/DD_News.png",
+        stream: "https://d75dqofg5kmfk.cloudfront.net/bpk-tv/Ddnational/default/index.m3u8",
+        backupStream: "https://d75dqofg5kmfk.cloudfront.net/bpk-tv/Ddbharti/default/index.m3u8"
+      },
+
+      // --- MUSIC CHANNELS ---
+      {
+        name: "9XM Music",
+        category: "Music",
+        logo: "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_9XM/images/LOGO_HD/image.png",
+        stream: "https://9xjio.wiseplayout.com/9XM/master.m3u8",
+        backupStream: "https://wiselp.wiseplayout.com/9X_Jalwa/master.m3u8"
+      },
+      {
+        name: "9X Jalwa",
+        category: "Music",
+        logo: "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_9X_JALWA/images/LOGO_HD/image.png",
+        stream: "https://wiselp.wiseplayout.com/9X_Jalwa/master.m3u8",
+        backupStream: "https://9xjio.wiseplayout.com/9XM/master.m3u8"
+      },
+      {
+        name: "9X Tashan",
+        category: "Music",
+        logo: "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_9X_TASHAN/images/LOGO_HD/image.png",
+        stream: "https://amg01281-9xmediapvtltd-9xtashan-samsungin-xz1sd.amagi.tv/playlist/amg01281-9xmediapvtltd-9xtashan-samsungin/playlist.m3u8",
+        backupStream: "https://wiselp.wiseplayout.com/9X_Jalwa/master.m3u8"
+      },
+      {
+        name: "B4U Music",
+        category: "Music",
+        logo: "https://jiotvimages.cdn.jio.com/dare_images/images/B4U_Music.png",
+        stream: "https://amg01408-amg01408c5-amgplt0747.playout.now3.amagi.tv/b4um001/playlist.m3u8",
+        backupStream: "https://streams.tangotv.in/BALLEBALLE/ORIGIN/index.m3u8"
+      },
+      {
+        name: "Balle Balle",
+        category: "Music",
+        logo: "https://jiotvimages.cdn.jio.com/dare_images/images/Balle_Balle_TV.png",
+        stream: "https://streams.tangotv.in/BALLEBALLE/ORIGIN/index.m3u8",
+        backupStream: "https://amg01408-amg01408c5-amgplt0747.playout.now3.amagi.tv/b4um001/playlist.m3u8"
+      },
+
+      // --- DEVOTIONAL & SPIRITUAL ---
+      {
+        name: "Aastha HD",
+        category: "Religious",
+        logo: "https://jiotvimages.cdn.jio.com/dare_images/images/Aastha.png",
+        stream: "https://aasthaott.akamaized.net/110923/smil:aasthatv.smil/index.m3u8",
+        backupStream: "https://aasthaott.akamaized.net/110923/smil:aasthaprime1.smil/master.m3u8"
+      },
+      {
+        name: "Aastha Bhajan",
+        category: "Religious",
+        logo: "https://jiotvimages.cdn.jio.com/dare_images/images/Aastha_Bhajan.png",
+        stream: "https://aasthaott.akamaized.net/110923/smil:aasthaprime1.smil/master.m3u8",
+        backupStream: "https://aasthaott.akamaized.net/110923/smil:aasthatv.smil/index.m3u8"
+      },
+      {
+        name: "Anand TV",
+        category: "Religious",
+        logo: "https://jiotvimages.cdn.jio.com/dare_images/images/Anand_TV.png",
+        stream: "https://live.legitpro.co.in/anandtv/index.m3u8",
+        backupStream: "https://cdn.pishow.tv/ott/live/397/master.m3u8"
+      },
+      {
+        name: "Bhakthi TV",
+        category: "Religious",
+        logo: "https://jiotvimages.cdn.jio.com/dare_images/images/Bhakti_TV.png",
+        stream: "https://cdn.pishow.tv/ott/live/397/master.m3u8",
+        backupStream: "https://live.legitpro.co.in/anandtv/index.m3u8"
+      }
+    ];
+
+    const categories = ["All", "Entertainment", "Movies", "Music", "News", "Religious"];
+    let currentCategory = "All";
+    let activeChannel = null;
+    let isBackupActive = false;
+    let hlsInstance = null;
+
+    // DOM References
+    const catNav = document.getElementById("catNav");
+    const channelGrid = document.getElementById("channelGrid");
+    const pageHeading = document.getElementById("pageHeading");
+    const videoModal = document.getElementById("videoModal");
+    const livePlayer = document.getElementById("livePlayer");
+    const playingTitle = document.getElementById("playingTitle");
+    const extStreamBtn = document.getElementById("extStreamBtn");
+    const switchStreamBtn = document.getElementById("switchStreamBtn");
+    const closeModalBtn = document.getElementById("closeModalBtn");
+    const streamStatus = document.getElementById("streamStatus");
+
+    function renderNavigation() {
+      catNav.innerHTML = "";
+      categories.forEach(cat => {
+        const count = cat === "All" ? channels.length : channels.filter(c => c.category === cat).length;
+        const btn = document.createElement("button");
+        btn.className = `cat-btn ${cat === currentCategory ? 'active' : ''}`;
+        btn.innerHTML = `<span>${cat}</span><span class="cat-badge">${count}</span>`;
+        btn.onclick = () => {
+          currentCategory = cat;
+          renderNavigation();
+          renderChannelCards();
+        };
+        catNav.appendChild(btn);
+      });
+    }
+
+    function renderChannelCards() {
+      channelGrid.innerHTML = "";
+      const filtered = currentCategory === "All" ? channels : channels.filter(c => c.category === currentCategory);
+      
+      pageHeading.innerHTML = `${currentCategory} <span class="badge-fhd">${filtered.length} Channels</span>`;
+
+      filtered.forEach(ch => {
+        const card = document.createElement("div");
+        card.className = "channel-card";
+        card.tabIndex = 0;
+
+        let logoHtml = "";
+        if (ch.logoType === "badge") {
+          logoHtml = `<div class="logo-badge" style="background: ${ch.badgeBg}; color: ${ch.badgeColor};">${ch.badgeText}</div>`;
+        } else {
+          logoHtml = `<img src="${ch.logo}" alt="${ch.name}" loading="lazy" onerror="this.outerHTML='<div class=\\'logo-badge\\' style=\\'background:#334155;color:#fff;\\'>${ch.name.substring(0,6)}</div>';">`;
+        }
+
+        card.innerHTML = `
+          <div class="card-img-wrap">
+            ${logoHtml}
+          </div>
+          <div class="card-title">${ch.name}</div>
+        `;
+
+        card.onclick = () => openChannelPlayer(ch);
+        card.onkeydown = (e) => {
+          if (e.key === "Enter" || e.keyCode === 13) openChannelPlayer(ch);
+        };
+
+        channelGrid.appendChild(card);
+      });
+    }
+
+    function openChannelPlayer(ch) {
+      activeChannel = ch;
+      isBackupActive = false;
+      playingTitle.innerText = ch.name;
+      switchStreamBtn.innerText = "🔄 Server 2";
+      updateExternalLink(ch.stream);
+      streamStatus.innerText = "Connecting to Live Feed (Server 1)...";
+      videoModal.classList.add("open");
+
+      loadAndPlayVideo(ch.stream);
+    }
+
+    function updateExternalLink(url) {
+      extStreamBtn.href = url;
+    }
+
+    function loadAndPlayVideo(srcUrl) {
+      if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstance = null;
+      }
+
+      livePlayer.pause();
+
+      if (window.Hls && Hls.isSupported()) {
+        hlsInstance = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+          backBufferLength: 90
+        });
+        hlsInstance.loadSource(srcUrl);
+        hlsInstance.attachMedia(livePlayer);
+
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+          livePlayer.play().catch(() => {
+            streamStatus.innerText = "Tap video to start playback.";
+          });
+          streamStatus.innerText = "● LIVE (Real-time Broadcast)";
+        });
+
+        hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            handleStreamError();
+          }
+        });
+      } else if (livePlayer.canPlayType('application/vnd.apple.mpegurl')) {
+        livePlayer.src = srcUrl;
+        livePlayer.play().then(() => {
+          streamStatus.innerText = "● LIVE (Real-time Broadcast)";
+        }).catch(() => {
+          streamStatus.innerText = "Tap video to play.";
+        });
+      } else {
+        livePlayer.src = srcUrl;
+        livePlayer.play().catch(() => {});
+      }
+
+      livePlayer.onerror = () => {
+        handleStreamError();
+      };
+    }
+
+    function handleStreamError() {
+      if (!isBackupActive && activeChannel && activeChannel.backupStream) {
+        streamStatus.innerText = "Server 1 busy. Auto-switching to Server 2...";
+        toggleStreamServer();
+      } else {
+        streamStatus.innerText = "Stream busy. Click 'Open Direct' or switch server.";
+      }
+    }
+
+    function toggleStreamServer() {
+      if (!activeChannel) return;
+      if (!isBackupActive) {
+        isBackupActive = true;
+        switchStreamBtn.innerText = "🔄 Server 1";
+        streamStatus.innerText = "Connecting to Server 2...";
+        const targetUrl = activeChannel.backupStream || activeChannel.stream;
+        updateExternalLink(targetUrl);
+        loadAndPlayVideo(targetUrl);
+      } else {
+        isBackupActive = false;
+        switchStreamBtn.innerText = "🔄 Server 2";
+        streamStatus.innerText = "Reconnecting to Server 1...";
+        updateExternalLink(activeChannel.stream);
+        loadAndPlayVideo(activeChannel.stream);
+      }
+    }
+
+    switchStreamBtn.onclick = toggleStreamServer;
+
+    function closeChannelPlayer() {
+      videoModal.classList.remove("open");
+      if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstance = null;
+      }
+      livePlayer.pause();
+      livePlayer.src = "";
+    }
+
+    closeModalBtn.onclick = closeChannelPlayer;
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" || e.keyCode === 27) {
+        closeChannelPlayer();
+      }
+    });
+
+    // Boot Up
+    renderNavigation();
+    renderChannelCards();
+  </script>
+</body>
+</html>
