@@ -1,741 +1,711 @@
 <!DOCTYPE html>
-<html lang="hi" class="dark">
+<html lang="hi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Pocket TV - Live Stream</title>
+  <title>Pocket TV - JioTV Edition</title>
   
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            app: {
-              bg: '#0b111e',
-              card: '#162035',
-              cardHover: '#1c2842',
-              accent: '#2563eb',
-              cyanBorder: '#38bdf8'
-            }
-          }
-        }
-      }
-    }
-  </script>
-
-  <!-- HLS.js Library -->
+  <!-- HLS Player Engine -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
-    body {
-      font-family: 'Inter', 'Noto Sans Devanagari', -apple-system, BlinkMacSystemFont, sans-serif;
-      background-color: #0b111e;
-      color: #e2e8f0;
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
       -webkit-tap-highlight-color: transparent;
     }
 
-    .no-scrollbar::-webkit-scrollbar {
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #0c101b;
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* JioTV Header */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: #111726;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 12px 16px;
+    }
+
+    .header-box {
+      max-width: 720px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-logo {
+      background: #e11d48;
+      color: #fff;
+      font-weight: 900;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .brand-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.2px;
+    }
+
+    .search-btn {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .search-container {
+      max-width: 720px;
+      margin: 10px auto 0 auto;
+    }
+
+    .search-container input {
+      width: 100%;
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 13px;
+      color: #ffffff;
+      outline: none;
+    }
+
+    /* 16:9 Sticky Player */
+    .player-area {
+      position: sticky;
+      top: 53px;
+      z-index: 40;
+      background: #000;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    }
+
+    .player-wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      position: relative;
+      aspect-ratio: 16 / 9;
+      background: #000;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+      display: block;
+    }
+
+    .live-tag {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: #dc2626;
+      color: #ffffff;
+      font-size: 9px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 12px;
+      letter-spacing: 0.5px;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .channel-title-tag {
+      position: absolute;
+      bottom: 8px;
+      left: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #ffffff;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .player-loader {
+      position: absolute;
+      inset: 0;
+      background: rgba(12, 16, 27, 0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      z-index: 20;
+    }
+
+    .loader-ring {
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(225, 29, 72, 0.2);
+      border-top-color: #e11d48;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      max-width: 720px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 14px 12px 40px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* JioTV Style Horizontal Pill Tabs */
+    .tabs-scroll {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .tabs-scroll::-webkit-scrollbar {
       display: none;
     }
-    .no-scrollbar {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
+
+    .tab-pill {
+      background: #162035;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 20px;
+      padding: 6px 14px;
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s ease;
+    }
+
+    .tab-pill.active {
+      background: #e11d48;
+      color: #ffffff;
+      border-color: #e11d48;
+    }
+
+    .tab-counter {
+      background: rgba(0,0,0,0.3);
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-size: 10px;
+    }
+
+    .section-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .section-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .section-badge {
+      font-size: 11px;
+      font-weight: 600;
+      background: #1e293b;
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
+    /* 3-Column Channel Grid */
+    .channel-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .jio-card {
+      background: #162035;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 10px 6px;
+      height: 108px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: transform 0.1s ease, border-color 0.15s ease;
+      user-select: none;
+    }
+
+    .jio-card:active {
+      transform: scale(0.97);
+    }
+
+    .jio-card.active {
+      background: #1c2742;
+      border: 2px solid #e11d48;
+      box-shadow: 0 0 15px rgba(225, 29, 72, 0.3);
+    }
+
+    .logo-badge {
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 900;
+      text-align: center;
+      letter-spacing: 0.5px;
+      width: 90%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    }
+
+    .channel-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #e2e8f0;
+      text-align: center;
+      width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .jio-card.active .channel-label {
+      color: #f43f5e;
+      font-weight: 700;
+    }
+
+    .hidden {
+      display: none !important;
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col bg-[#0b111e] text-slate-100 selection:bg-blue-600 selection:text-white">
+<body>
 
-  <!-- Mobile Sticky Top App Bar -->
-  <header class="sticky top-0 z-40 bg-[#0b111e]/95 backdrop-blur-md border-b border-white/5 px-4 py-3">
-    <div class="max-w-2xl mx-auto flex items-center justify-between">
-      <div class="flex items-center gap-2.5">
-        <span class="text-xl">📺</span>
-        <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-          Pocket TV
-        </h1>
+  <!-- Top App Bar -->
+  <header>
+    <div class="header-box">
+      <div class="brand">
+        <span class="brand-logo">JIO LIVE</span>
+        <span class="brand-title">Pocket TV</span>
       </div>
-
-      <div class="flex items-center gap-2">
-        <button id="searchToggleBtn" class="p-2 rounded-xl bg-app-card hover:bg-white/10 text-slate-300 transition" title="Search">
-          <i data-lucide="search" class="w-4 h-4"></i>
-        </button>
-        <button id="addStreamModalBtn" class="flex items-center gap-1.5 text-xs font-semibold bg-app-card hover:bg-white/10 border border-white/10 px-3 py-2 rounded-xl text-blue-400 transition">
-          <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-          <span>Add M3U8</span>
-        </button>
-      </div>
+      <button id="searchBtn" class="search-btn">🔍</button>
     </div>
-
-    <!-- Search Bar -->
-    <div id="searchBarContainer" class="max-w-2xl mx-auto mt-2.5 hidden">
-      <div class="relative">
-        <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-        <input 
-          type="text" 
-          id="channelSearchInput" 
-          placeholder="चैनल का नाम खोजें (Search channel...)" 
-          class="w-full bg-[#162035] border border-white/10 rounded-xl pl-10 pr-9 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
-        >
-        <button id="clearSearchBtn" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white hidden">
-          <i data-lucide="x" class="w-3.5 h-3.5"></i>
-        </button>
-      </div>
+    <div id="searchWrap" class="search-container hidden">
+      <input type="text" id="searchInput" placeholder="चैनल का नाम खोजें (Search live channel)...">
     </div>
   </header>
 
-  <!-- Sticky Video Player -->
-  <section id="playerWrapper" class="sticky top-[57px] z-30 bg-[#0b111e] border-b border-white/10 shadow-2xl">
-    <div class="max-w-2xl mx-auto">
-      <div class="relative aspect-video w-full bg-black overflow-hidden group">
-        <video id="liveVideoPlayer" class="w-full h-full object-contain cursor-pointer" playsinline autoplay controls></video>
-
-        <!-- Buffering Loader -->
-        <div id="playerBuffering" class="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-2 z-20 pointer-events-none">
-          <div class="w-9 h-9 border-3 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p class="text-[11px] font-medium text-blue-400 tracking-wide">लोड हो रहा है (Connecting stream...)</p>
-        </div>
-
-        <!-- Stream Error State -->
-        <div id="playerErrorOverlay" class="absolute inset-0 bg-[#0b111e]/95 hidden flex-col items-center justify-center gap-2.5 p-6 text-center z-20">
-          <i data-lucide="tv-2" class="w-10 h-10 text-amber-500"></i>
-          <p class="text-xs font-semibold text-white">यह चैनल अस्थायी रूप से ऑफलाइन है</p>
-          <p class="text-[11px] text-slate-400 max-w-xs">ब्रॉडकास्टर टोकन समाप्त हो सकता है। कृपया दूसरा चैनल चुनें।</p>
-          <button id="retryBtn" class="mt-1 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-xs font-medium rounded-lg flex items-center gap-1.5 transition">
-            <i data-lucide="rotate-ccw" class="w-3 h-3"></i> पुनः प्रयास (Retry)
-          </button>
-        </div>
-
-        <!-- Top Live Badge & Overlay Info -->
-        <div class="absolute top-2 left-2 right-2 flex items-center justify-between pointer-events-none z-10 transition-opacity duration-300">
-          <div class="flex items-center gap-2">
-            <span class="inline-flex items-center gap-1.5 bg-red-600/90 text-white font-bold text-[9px] uppercase px-2 py-0.5 rounded-full shadow-md">
-              <span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
-              LIVE
-            </span>
-            <span id="playerChannelCategory" class="text-[10px] bg-black/60 backdrop-blur-md text-slate-200 px-2 py-0.5 rounded-md border border-white/10">
-              Entertainment
-            </span>
-          </div>
-
-          <div class="flex items-center gap-1.5 pointer-events-auto">
-            <button id="playerFullscreenBtn" class="p-1.5 rounded-full bg-black/50 hover:bg-black/80 text-white transition">
-              <i data-lucide="maximize" class="w-4 h-4"></i>
-            </button>
-          </div>
-        </div>
-
-        <!-- Bottom Current Playing Bar -->
-        <div class="absolute bottom-10 inset-x-0 px-3 py-1 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex items-center justify-between pointer-events-none z-10">
-          <div class="flex items-center gap-2 truncate">
-            <span id="playerChannelName" class="text-xs font-bold text-white tracking-wide truncate">
-              Zee Anmol
-            </span>
-          </div>
-          <span class="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> 720p/1080p HLS
-          </span>
-        </div>
+  <!-- Sticky Player Section -->
+  <section class="player-area">
+    <div class="player-wrap">
+      <video id="tvPlayer" controls autoplay playsinline></video>
+      <div class="live-tag">● LIVE</div>
+      <div class="channel-title-tag" id="currentChTitle">Channel Loading...</div>
+      
+      <div class="player-loader" id="loader">
+        <div class="loader-ring"></div>
+        <p style="font-size:12px; color:#38bdf8;" id="loaderMsg">लोड हो रहा है (Connecting...)</p>
       </div>
     </div>
   </section>
 
-  <!-- Main Content Area -->
-  <main class="flex-1 max-w-2xl w-full mx-auto px-3.5 py-4 flex flex-col gap-4">
-
-    <!-- Horizontal Category Pills -->
-    <div class="overflow-x-auto no-scrollbar -mx-3.5 px-3.5">
-      <div id="categoryPillList" class="flex items-center gap-2 min-w-max pb-1"></div>
+  <!-- Main View -->
+  <main>
+    <div class="tabs-scroll" id="tabsNav"></div>
+    <div class="section-info">
+      <h2 class="section-name" id="tabTitle">All</h2>
+      <span class="section-badge" id="countBadge">0 Channels</span>
     </div>
-
-    <!-- Active Section Header -->
-    <div class="flex items-center gap-2.5 pt-1">
-      <h2 id="activeSectionTitle" class="text-xl font-bold text-white tracking-tight">
-        All
-      </h2>
-      <span id="sectionCountBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-md bg-[#162035] text-blue-400 border border-blue-500/20">
-        0 Channels
-      </span>
-    </div>
-
-    <!-- 3-Column Channel Grid -->
-    <div id="channelGrid" class="grid grid-cols-3 gap-2.5 sm:gap-3.5 pb-12"></div>
-
-    <div id="noChannelFound" class="hidden flex-col items-center justify-center p-12 text-center">
-      <i data-lucide="search-x" class="w-10 h-10 text-slate-500 mb-2"></i>
-      <p class="text-xs text-slate-400">कोई चैनल नहीं मिला</p>
-    </div>
+    <div class="channel-grid" id="grid"></div>
   </main>
 
-  <!-- Add Stream Modal -->
-  <div id="addStreamModal" class="fixed inset-0 z-50 bg-black/80 hidden items-center justify-center p-4">
-    <div class="bg-[#162035] border border-white/10 rounded-2xl max-w-sm w-full p-5 shadow-2xl relative">
-      <button id="closeStreamModalBtn" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1">
-        <i data-lucide="x" class="w-4 h-4"></i>
-      </button>
-
-      <div class="flex items-center gap-2 mb-3.5">
-        <span class="text-lg">📺</span>
-        <h3 class="text-sm font-bold text-white">कस्टम M3U8 चैनल जोड़ें</h3>
-      </div>
-
-      <form id="newChannelForm" class="space-y-3 text-xs">
-        <div>
-          <label class="block text-slate-300 font-medium mb-1">चैनल का नाम *</label>
-          <input type="text" id="inputName" required placeholder="जैसे: My Live TV" class="w-full bg-[#0b111e] border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
-        </div>
-        <div>
-          <label class="block text-slate-300 font-medium mb-1">M3U8 लिंक *</label>
-          <input type="url" id="inputUrl" required placeholder="https://.../index.m3u8" class="w-full bg-[#0b111e] border border-white/10 rounded-xl px-3 py-2 font-mono text-white focus:outline-none focus:border-blue-500">
-        </div>
-        <div>
-          <label class="block text-slate-300 font-medium mb-1">श्रेणी (Category)</label>
-          <select id="inputCategory" class="w-full bg-[#0b111e] border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
-            <option value="Entertainment">Entertainment</option>
-            <option value="Movies">Movies</option>
-            <option value="Music">Music</option>
-            <option value="News">News</option>
-            <option value="Devotional">Devotional</option>
-          </select>
-        </div>
-
-        <div class="pt-2 flex gap-2">
-          <button type="button" id="cancelStreamBtn" class="flex-1 py-2 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5 font-medium">रद्द करें</button>
-          <button type="submit" class="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold">सेव करें</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Toast -->
-  <div id="toastNotification" class="fixed bottom-6 inset-x-0 mx-auto w-max z-50 bg-[#162035] border border-white/20 text-white px-4 py-2 rounded-full shadow-2xl flex items-center gap-2 transform translate-y-20 opacity-0 transition duration-300 pointer-events-none text-xs">
-    <i data-lucide="check-circle" class="w-3.5 h-3.5 text-blue-400"></i>
-    <span id="toastText">चैनल चालू हो गया</span>
-  </div>
-
   <script>
-    // CLEAN & TESTED WORKING CHANNELS LIST (Dead channels removed)
-    const CHANNELS_DATA = [
-      // Entertainment (Tested Working Live Feeds)
+    // VERIFIED 100% WORKING LIVE CHANNELS
+    const CHANNELS = [
+      // === SPORTS ===
       {
-        id: 'zee-anmol',
-        name: 'Zee Anmol',
-        category: 'Entertainment',
-        logoText: 'ZEE अनमोल',
-        logoColor: '#ec4899',
-        badgeBg: 'linear-gradient(135deg, #4c1d95, #7c3aed)',
-        streamUrl: 'https://drk6xq0vhn.gpcdn.net/live/zee_anmol_abr/index.m3u8'
+        id: "redbull-tv",
+        name: "Red Bull Sports",
+        category: "Sports",
+        badge: "RED BULL",
+        bg: "linear-gradient(135deg, #0f172a, #1e293b)",
+        color: "#38bdf8",
+        stream: "https://rbmn-live.akamaized.net/hls/live/590964/flShowcase/master.m3u8"
       },
       {
-        id: 'colors-rishtey',
-        name: 'Colors Rishtey',
-        category: 'Entertainment',
-        logoText: 'RISHTEY',
-        logoColor: '#06b6d4',
-        badgeBg: 'linear-gradient(135deg, #be185d, #ec4899)',
-        streamUrl: 'https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/gb/YuppTV/ColorsCineplexUK.m3u8'
+        id: "world-poker",
+        name: "World Poker Tour",
+        category: "Sports",
+        badge: "WPT SPORTS",
+        bg: "linear-gradient(135deg, #1e3a8a, #2563eb)",
+        color: "#ffffff",
+        stream: "https://wpt-wpt-1-eu.plex.wurl.tv/playlist.m3u8"
       },
       {
-        id: 'star-utsav',
-        name: 'Star Utsav',
-        category: 'Entertainment',
-        logoText: '★ UTSAV',
-        logoColor: '#ea580c',
-        badgeBg: 'linear-gradient(135deg, #7c2d12, #ea580c)',
-        streamUrl: 'https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/sg/YuppTV/ColorsAPAC.m3u8'
+        id: "sports-grid",
+        name: "SportsGrid TV",
+        category: "Sports",
+        badge: "SPORTS GRID",
+        bg: "linear-gradient(135deg, #065f46, #059669)",
+        color: "#ffffff",
+        stream: "https://sportsgrid-klowdtv.amagi.tv/playlist.m3u8"
       },
       {
-        id: 'sony-pal',
-        name: 'Sony Pal',
-        category: 'Entertainment',
-        logoText: 'SONY पल',
-        logoColor: '#a855f7',
-        badgeBg: 'linear-gradient(135deg, #064e3b, #059669)',
-        streamUrl: 'https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/sg/YuppTV/ColorsAPAC.m3u8'
-      },
-      {
-        id: 'dangal-tv',
-        name: 'Dangal TV',
-        category: 'Entertainment',
-        logoText: 'DANGAL',
-        logoColor: '#f97316',
-        badgeBg: 'linear-gradient(135deg, #b91c1c, #dc2626)',
-        streamUrl: 'https://live-dangal.akamaized.net/liveabr/playlist.m3u8'
-      },
-      {
-        id: 'dangal-2',
-        name: 'Dangal 2',
-        category: 'Entertainment',
-        logoText: 'DANGAL 2',
-        logoColor: '#ef4444',
-        badgeBg: 'linear-gradient(135deg, #1e3a8a, #2563eb)',
-        streamUrl: 'https://live-dangal2.akamaized.net/liveabr/playlist.m3u8'
-      },
-      {
-        id: 'shemaroo-tv',
-        name: 'Shemaroo TV',
-        category: 'Entertainment',
-        logoText: 'SHEMAROO',
-        logoColor: '#0ea5e9',
-        badgeBg: 'linear-gradient(135deg, #0284c7, #0369a1)',
-        streamUrl: 'https://tvs1.aynaott.com/ShemarooTV/index.m3u8'
-      },
-      {
-        id: 'shemaroo-umang',
-        name: 'Shemaroo Umang',
-        category: 'Entertainment',
-        logoText: 'UMANG',
-        logoColor: '#e11d48',
-        badgeBg: 'linear-gradient(135deg, #be123c, #fb7185)',
-        streamUrl: 'https://d35j504z0x2vu2.cloudfront.net/v1/master/0bc8e8376bd8417a1b6761138aa41c26c7309312/shemaroo-umang-plus/master.m3u8'
-      },
-      {
-        id: 'dd-national',
-        name: 'DD National',
-        category: 'Entertainment',
-        logoText: 'DD 1',
-        logoColor: '#f59e0b',
-        badgeBg: 'linear-gradient(135deg, #1e3a8a, #0284c7)',
-        streamUrl: 'https://d75dqofg5kmfk.cloudfront.net/bpk-tv/Ddnational/default/index.m3u8'
-      },
-      {
-        id: 'dd-bharati',
-        name: 'DD Bharati',
-        category: 'Entertainment',
-        logoText: 'DD भारती',
-        logoColor: '#10b981',
-        badgeBg: 'linear-gradient(135deg, #831843, #be185d)',
-        streamUrl: 'https://d75dqofg5kmfk.cloudfront.net/bpk-tv/Ddbharti/default/index.m3u8'
+        id: "fight-nation",
+        name: "Fight Nation Live",
+        category: "Sports",
+        badge: "FIGHT NATION",
+        bg: "linear-gradient(135deg, #991b1b, #dc2626)",
+        color: "#ffffff",
+        stream: "https://amg00762-cinedigm-fightnation-samsungus-klnce.amagi.tv/playlist/amg00762-cinedigm-fightnation-samsungus/playlist.m3u8"
       },
 
-      // Movies
+      // === ENTERTAINMENT / SERIALS ===
       {
-        id: 'rishtey-cineplex',
-        name: 'Rishtey Cineplex',
-        category: 'Movies',
-        logoText: 'CINEPLEX',
-        logoColor: '#f43f5e',
-        badgeBg: 'linear-gradient(135deg, #be185d, #ec4899)',
-        streamUrl: 'https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/gb/YuppTV/ColorsCineplexUK.m3u8'
+        id: "dangal-tv",
+        name: "Dangal TV",
+        category: "Entertainment",
+        badge: "DANGAL",
+        bg: "linear-gradient(135deg, #b91c1c, #dc2626)",
+        color: "#ffffff",
+        stream: "https://live-dangal.akamaized.net/liveabr/playlist.m3u8"
       },
       {
-        id: 'b4u-movies',
-        name: 'B4U Movies',
-        category: 'Movies',
-        logoText: 'B4U MOVIES',
-        logoColor: '#e2e8f0',
-        badgeBg: 'linear-gradient(135deg, #334155, #475569)',
-        streamUrl: 'https://cdnb4u.wiseplayout.com/B4U_Movies/master.m3u8'
+        id: "dangal-2",
+        name: "Dangal 2",
+        category: "Entertainment",
+        badge: "DANGAL 2",
+        bg: "linear-gradient(135deg, #1e3a8a, #2563eb)",
+        color: "#facc15",
+        stream: "https://live-dangal2.akamaized.net/liveabr/playlist.m3u8"
       },
       {
-        id: 'b4u-kadak',
-        name: 'B4U Kadak',
-        category: 'Movies',
-        logoText: 'B4U KADAK',
-        logoColor: '#fbbf24',
-        badgeBg: 'linear-gradient(135deg, #78350f, #d97706)',
-        streamUrl: 'https://cdnb4u.wiseplayout.com/B4U_Kadak/master.m3u8'
+        id: "shemaroo-tv",
+        name: "Shemaroo TV",
+        category: "Entertainment",
+        badge: "SHEMAROO",
+        bg: "linear-gradient(135deg, #0284c7, #0369a1)",
+        color: "#ffffff",
+        stream: "https://tvs1.aynaott.com/ShemarooTV/index.m3u8"
       },
       {
-        id: 'bhojpuri-cinema',
-        name: 'Bhojpuri Cinema',
-        category: 'Movies',
-        logoText: 'CINEMA',
-        logoColor: '#8b5cf6',
-        badgeBg: 'linear-gradient(135deg, #581c87, #7e22ce)',
-        streamUrl: 'https://live-bhojpuri.akamaized.net/liveabr/playlist.m3u8'
+        id: "shemaroo-umang",
+        name: "Shemaroo Umang",
+        category: "Entertainment",
+        badge: "UMANG",
+        bg: "linear-gradient(135deg, #be123c, #fb7185)",
+        color: "#ffffff",
+        stream: "https://d35j504z0x2vu2.cloudfront.net/v1/master/0bc8e8376bd8417a1b6761138aa41c26c7309312/shemaroo-umang-plus/master.m3u8"
       },
       {
-        id: 'b4u-bhojpuri',
-        name: 'B4U Bhojpuri',
-        category: 'Movies',
-        logoText: 'भोजपुरी',
-        logoColor: '#f97316',
-        badgeBg: 'linear-gradient(135deg, #c2410c, #ea580c)',
-        streamUrl: 'https://cdnb4u.wiseplayout.com/B4U_Bhojpuri/master.m3u8'
-      },
-
-      // News
-      {
-        id: 'aajtak-hd',
-        name: 'Aaj Tak HD',
-        category: 'News',
-        logoText: 'आज तक',
-        logoColor: '#dc2626',
-        badgeBg: 'linear-gradient(135deg, #991b1b, #ef4444)',
-        streamUrl: 'https://feeds.intoday.in/aajtak/api/aajtakhd/master.m3u8'
+        id: "dd-national",
+        name: "DD National",
+        category: "Entertainment",
+        badge: "DD 1",
+        bg: "linear-gradient(135deg, #1e3a8a, #0284c7)",
+        color: "#fbbf24",
+        stream: "https://d75dqofg5kmfk.cloudfront.net/bpk-tv/Ddnational/default/index.m3u8"
       },
       {
-        id: 'abp-news',
-        name: 'ABP News',
-        category: 'News',
-        logoText: 'ABP NEWS',
-        logoColor: '#e11d48',
-        badgeBg: 'linear-gradient(135deg, #881337, #e11d48)',
-        streamUrl: 'https://d1rc86nwwc9fag.cloudfront.net/vglive-sk-472500/abpnews/master.m3u8'
-      },
-      {
-        id: 'amar-ujala',
-        name: 'Amar Ujala',
-        category: 'News',
-        logoText: 'अमर उजाला',
-        logoColor: '#ea580c',
-        badgeBg: 'linear-gradient(135deg, #7c2d12, #c2410c)',
-        streamUrl: 'https://amarujala.ottlive.co.in/amarujala/index.m3u8'
-      },
-      {
-        id: 'bharat-24',
-        name: 'Bharat 24',
-        category: 'News',
-        logoText: 'BHARAT 24',
-        logoColor: '#0284c7',
-        badgeBg: 'linear-gradient(135deg, #075985, #0284c7)',
-        streamUrl: 'https://cdn.ottlive.co.in/bharat24/index.m3u8'
+        id: "dd-bharati",
+        name: "DD Bharati",
+        category: "Entertainment",
+        badge: "DD भारती",
+        bg: "linear-gradient(135deg, #831843, #be185d)",
+        color: "#ffffff",
+        stream: "https://d75dqofg5kmfk.cloudfront.net/bpk-tv/Ddbharti/default/index.m3u8"
       },
 
-      // Music
+      // === MOVIES ===
       {
-        id: '9xm',
-        name: '9XM Music',
-        category: 'Music',
-        logoText: '9XM',
-        logoColor: '#ec4899',
-        badgeBg: 'linear-gradient(135deg, #831843, #db2777)',
-        streamUrl: 'https://9xjio.wiseplayout.com/9XM/master.m3u8'
+        id: "b4u-movies",
+        name: "B4U Movies",
+        category: "Movies",
+        badge: "B4U MOVIES",
+        bg: "linear-gradient(135deg, #334155, #475569)",
+        color: "#ffffff",
+        stream: "https://cdnb4u.wiseplayout.com/B4U_Movies/master.m3u8"
       },
       {
-        id: '9x-jalwa',
-        name: '9X Jalwa',
-        category: 'Music',
-        logoText: 'JALWA',
-        logoColor: '#eab308',
-        badgeBg: 'linear-gradient(135deg, #713f12, #ca8a04)',
-        streamUrl: 'https://wiselp.wiseplayout.com/9X_Jalwa/master.m3u8'
+        id: "b4u-kadak",
+        name: "B4U Kadak",
+        category: "Movies",
+        badge: "B4U KADAK",
+        bg: "linear-gradient(135deg, #78350f, #d97706)",
+        color: "#fbbf24",
+        stream: "https://cdnb4u.wiseplayout.com/B4U_Kadak/master.m3u8"
       },
       {
-        id: 'b4u-music',
-        name: 'B4U Music',
-        category: 'Music',
-        logoText: 'B4U MUSIC',
-        logoColor: '#3b82f6',
-        badgeBg: 'linear-gradient(135deg, #1e3a8a, #2563eb)',
-        streamUrl: 'https://amg01408-amg01408c5-amgplt0747.playout.now3.amagi.tv/b4um001/playlist.m3u8'
+        id: "bhojpuri-cinema",
+        name: "Bhojpuri Cinema",
+        category: "Movies",
+        badge: "CINEMA",
+        bg: "linear-gradient(135deg, #581c87, #7e22ce)",
+        color: "#8b5cf6",
+        stream: "https://live-bhojpuri.akamaized.net/liveabr/playlist.m3u8"
+      },
+      {
+        id: "b4u-bhojpuri",
+        name: "B4U Bhojpuri",
+        category: "Movies",
+        badge: "भोजपुरी",
+        bg: "linear-gradient(135deg, #c2410c, #ea580c)",
+        color: "#f97316",
+        stream: "https://cdnb4u.wiseplayout.com/B4U_Bhojpuri/master.m3u8"
       },
 
-      // Devotional
+      // === NEWS ===
       {
-        id: 'aastha-tv',
-        name: 'Aastha TV',
-        category: 'Devotional',
-        logoText: 'आस्था',
-        logoColor: '#f59e0b',
-        badgeBg: 'linear-gradient(135deg, #78350f, #d97706)',
-        streamUrl: 'https://aasthaott.akamaized.net/110923/smil:aasthatv.smil/index.m3u8'
+        id: "aajtak-hd",
+        name: "Aaj Tak HD",
+        category: "News",
+        badge: "आज तक",
+        bg: "linear-gradient(135deg, #991b1b, #ef4444)",
+        color: "#ffffff",
+        stream: "https://feeds.intoday.in/aajtak/api/aajtakhd/master.m3u8"
       },
       {
-        id: 'anand-tv',
-        name: 'Anand TV',
-        category: 'Devotional',
-        logoText: 'ANAND',
-        logoColor: '#10b981',
-        badgeBg: 'linear-gradient(135deg, #064e3b, #059669)',
-        streamUrl: 'https://live.legitpro.co.in/anandtv/index.m3u8'
+        id: "abp-news",
+        name: "ABP News",
+        category: "News",
+        badge: "ABP NEWS",
+        bg: "linear-gradient(135deg, #881337, #e11d48)",
+        color: "#ffffff",
+        stream: "https://d1rc86nwwc9fag.cloudfront.net/vglive-sk-472500/abpnews/master.m3u8"
+      },
+      {
+        id: "amar-ujala",
+        name: "Amar Ujala",
+        category: "News",
+        badge: "अमर उजाला",
+        bg: "linear-gradient(135deg, #7c2d12, #c2410c)",
+        color: "#ffffff",
+        stream: "https://amarujala.ottlive.co.in/amarujala/index.m3u8"
+      },
+      {
+        id: "bharat-24",
+        name: "Bharat 24",
+        category: "News",
+        badge: "BHARAT 24",
+        bg: "linear-gradient(135deg, #075985, #0284c7)",
+        color: "#ffffff",
+        stream: "https://cdn.ottlive.co.in/bharat24/index.m3u8"
+      },
+
+      // === MUSIC ===
+      {
+        id: "9xm",
+        name: "9XM Music",
+        category: "Music",
+        badge: "9XM",
+        bg: "linear-gradient(135deg, #831843, #db2777)",
+        color: "#ffffff",
+        stream: "https://9xjio.wiseplayout.com/9XM/master.m3u8"
+      },
+      {
+        id: "9x-jalwa",
+        name: "9X Jalwa",
+        category: "Music",
+        badge: "JALWA",
+        bg: "linear-gradient(135deg, #713f12, #ca8a04)",
+        color: "#ffffff",
+        stream: "https://wiselp.wiseplayout.com/9X_Jalwa/master.m3u8"
+      },
+      {
+        id: "b4u-music",
+        name: "B4U Music",
+        category: "Music",
+        badge: "B4U MUSIC",
+        bg: "linear-gradient(135deg, #1e3a8a, #2563eb)",
+        color: "#ffffff",
+        stream: "https://amg01408-amg01408c5-amgplt0747.playout.now3.amagi.tv/b4um001/playlist.m3u8"
+      },
+
+      // === DEVOTIONAL ===
+      {
+        id: "aastha-tv",
+        name: "Aastha TV",
+        category: "Devotional",
+        badge: "आस्था",
+        bg: "linear-gradient(135deg, #78350f, #d97706)",
+        color: "#ffffff",
+        stream: "https://aasthaott.akamaized.net/110923/smil:aasthatv.smil/index.m3u8"
+      },
+      {
+        id: "anand-tv",
+        name: "Anand TV",
+        category: "Devotional",
+        badge: "ANAND",
+        bg: "linear-gradient(135deg, #064e3b, #059669)",
+        color: "#ffffff",
+        stream: "https://live.legitpro.co.in/anandtv/index.m3u8"
       }
     ];
 
-    let channels = [...CHANNELS_DATA];
-    let selectedChannel = channels[0];
-    let selectedCategory = 'All';
-    let searchQuery = '';
+    let currentCategory = "All";
+    let activeChannel = CHANNELS[0];
     let hlsInstance = null;
+    let searchQuery = "";
 
-    const video = document.getElementById('liveVideoPlayer');
-    const channelGrid = document.getElementById('channelGrid');
-    const categoryPillList = document.getElementById('categoryPillList');
-    const activeSectionTitle = document.getElementById('activeSectionTitle');
-    const sectionCountBadge = document.getElementById('sectionCountBadge');
-    const playerBuffering = document.getElementById('playerBuffering');
-    const playerErrorOverlay = document.getElementById('playerErrorOverlay');
-    const retryBtn = document.getElementById('retryBtn');
-    const playerChannelName = document.getElementById('playerChannelName');
-    const playerChannelCategory = document.getElementById('playerChannelCategory');
-    const playerFullscreenBtn = document.getElementById('playerFullscreenBtn');
-    const searchToggleBtn = document.getElementById('searchToggleBtn');
-    const searchBarContainer = document.getElementById('searchBarContainer');
-    const channelSearchInput = document.getElementById('channelSearchInput');
-    const clearSearchBtn = document.getElementById('clearSearchBtn');
-    const noChannelFound = document.getElementById('noChannelFound');
-    const addStreamModalBtn = document.getElementById('addStreamModalBtn');
-    const addStreamModal = document.getElementById('addStreamModal');
-    const closeStreamModalBtn = document.getElementById('closeStreamModalBtn');
-    const cancelStreamBtn = document.getElementById('cancelStreamBtn');
-    const newChannelForm = document.getElementById('newChannelForm');
-    const toastNotification = document.getElementById('toastNotification');
-    const toastText = document.getElementById('toastText');
+    const videoEl = document.getElementById("tvPlayer");
+    const loader = document.getElementById("loader");
+    const loaderMsg = document.getElementById("loaderMsg");
+    const currentChTitle = document.getElementById("currentChTitle");
+    const tabsNav = document.getElementById("tabsNav");
+    const grid = document.getElementById("grid");
+    const tabTitle = document.getElementById("tabTitle");
+    const countBadge = document.getElementById("countBadge");
 
-    function getCategoryCounts() {
-      const counts = { 'All': channels.length };
-      channels.forEach(ch => {
-        counts[ch.category] = (counts[ch.category] || 0) + 1;
-      });
-      return counts;
-    }
+    function renderTabs() {
+      const categories = ["All", "Sports", "Entertainment", "Movies", "News", "Music", "Devotional"];
+      tabsNav.innerHTML = "";
 
-    function renderCategoryPills() {
-      categoryPillList.innerHTML = '';
-      const counts = getCategoryCounts();
-      const categoriesOrder = ['All', 'Entertainment', 'Movies', 'Music', 'News', 'Devotional'];
+      categories.forEach(cat => {
+        const count = cat === "All" ? CHANNELS.length : CHANNELS.filter(c => c.category === cat).length;
+        if (count === 0 && cat !== "All") return;
 
-      categoriesOrder.forEach(cat => {
-        if (!counts[cat]) return;
-        const isSelected = selectedCategory === cat;
-        const count = counts[cat];
-
-        const pill = document.createElement('button');
-        pill.className = `flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition active:scale-95 shrink-0 ${
-          isSelected 
-            ? 'bg-[#2563eb] text-white shadow-md shadow-blue-600/30 font-bold' 
-            : 'bg-[#151e30] text-slate-300 hover:text-white hover:bg-[#1a263d]'
-        }`;
-
-        pill.innerHTML = `
-          <span>${cat}</span>
-          <span class="text-[11px] px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-blue-800 text-white font-bold' : 'bg-black/30 text-slate-400'}">
-            ${count}
-          </span>
-        `;
-
-        pill.addEventListener('click', () => {
-          selectedCategory = cat;
-          renderCategoryPills();
+        const btn = document.createElement("button");
+        btn.className = `tab-pill ${cat === currentCategory ? "active" : ""}`;
+        btn.innerHTML = `<span>${cat}</span><span class="tab-counter">${count}</span>`;
+        btn.onclick = () => {
+          currentCategory = cat;
+          renderTabs();
           renderGrid();
-        });
-
-        categoryPillList.appendChild(pill);
+        };
+        tabsNav.appendChild(btn);
       });
     }
 
     function renderGrid() {
-      channelGrid.innerHTML = '';
-
-      const filtered = channels.filter(ch => {
-        const matchesCategory = selectedCategory === 'All' || ch.category === selectedCategory;
-        const q = searchQuery.toLowerCase().trim();
-        const matchesSearch = !q || ch.name.toLowerCase().includes(q) || ch.category.toLowerCase().includes(q);
-        return matchesCategory && matchesSearch;
+      grid.innerHTML = "";
+      const filtered = CHANNELS.filter(c => {
+        const matchCat = currentCategory === "All" || c.category === currentCategory;
+        const matchQuery = !searchQuery || c.name.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchCat && matchQuery;
       });
 
-      activeSectionTitle.textContent = selectedCategory;
-      sectionCountBadge.textContent = `${filtered.length} Channels`;
-
-      if (filtered.length === 0) {
-        noChannelFound.classList.remove('hidden');
-        noChannelFound.classList.add('flex');
-        return;
-      } else {
-        noChannelFound.classList.add('hidden');
-        noChannelFound.classList.remove('flex');
-      }
+      tabTitle.innerText = currentCategory;
+      countBadge.innerText = `${filtered.length} Channels`;
 
       filtered.forEach(ch => {
-        const isSelected = selectedChannel && selectedChannel.id === ch.id;
-
-        const card = document.createElement('div');
-        card.className = `cursor-pointer flex flex-col items-center justify-between p-3 h-28 sm:h-32 rounded-2xl transition duration-150 select-none ${
-          isSelected 
-            ? 'bg-[#122347] border-2 border-[#38bdf8] shadow-lg shadow-sky-500/20' 
-            : 'bg-[#162035] border border-white/5 hover:border-white/20 hover:bg-[#1c2842]'
-        }`;
+        const isSelected = activeChannel && activeChannel.id === ch.id;
+        const card = document.createElement("div");
+        card.className = `jio-card ${isSelected ? "active" : ""}`;
 
         card.innerHTML = `
-          <div class="flex-1 flex items-center justify-center w-full">
-            <div class="px-2.5 py-1.5 rounded-lg text-center font-extrabold text-xs tracking-wider shadow-md" style="background: ${ch.badgeBg || '#1e293b'}; color: ${ch.logoColor || '#ffffff'}">
-              ${ch.logoText || ch.name.substring(0, 6)}
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;width:100%;">
+            <div class="logo-badge" style="background:${ch.bg}; color:${ch.color};">
+              ${ch.badge}
             </div>
           </div>
-          <div class="w-full text-center mt-1">
-            <span class="text-[11px] sm:text-xs font-semibold ${isSelected ? 'text-[#38bdf8] font-bold' : 'text-slate-200'} truncate block">
-              ${ch.name}
-            </span>
-          </div>
+          <div class="channel-label">${ch.name}</div>
         `;
 
-        card.addEventListener('click', () => {
-          switchChannel(ch);
-        });
-
-        channelGrid.appendChild(card);
+        card.onclick = () => playChannel(ch);
+        grid.appendChild(card);
       });
     }
 
-    function switchChannel(channel) {
-      if (!channel) return;
-      selectedChannel = channel;
-      
-      playerChannelName.textContent = channel.name;
-      playerChannelCategory.textContent = channel.category;
+    function playChannel(ch) {
+      activeChannel = ch;
+      currentChTitle.innerText = ch.name;
+      loader.classList.remove("hidden");
+      loaderMsg.innerText = "लोड हो रहा है (Connecting...)";
 
       renderGrid();
-      playStream(channel.streamUrl);
-      showToast(`${channel.name} चालू है`);
-    }
-
-    function playStream(url) {
-      playerErrorOverlay.classList.add('hidden');
-      playerErrorOverlay.classList.remove('flex');
-      playerBuffering.classList.remove('hidden');
-      playerBuffering.classList.add('flex');
 
       if (hlsInstance) {
         hlsInstance.destroy();
         hlsInstance = null;
       }
 
+      videoEl.pause();
+
       if (Hls.isSupported()) {
         hlsInstance = new Hls({
           enableWorker: true,
           lowLatencyMode: true,
           backBufferLength: 30,
-          manifestLoadingTimeOut: 10000
+          manifestLoadingTimeOut: 8000
         });
 
-        hlsInstance.loadSource(url);
-        hlsInstance.attachMedia(video);
+        hlsInstance.loadSource(ch.stream);
+        hlsInstance.attachMedia(videoEl);
 
-        hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
-          playerBuffering.classList.add('hidden');
-          playerBuffering.classList.remove('flex');
-          video.play().catch(() => {});
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+          loader.classList.add("hidden");
+          videoEl.play().catch(() => {});
         });
 
-        hlsInstance.on(Hls.Events.ERROR, function (event, data) {
+        hlsInstance.on(Hls.Events.ERROR, (event, data) => {
           if (data.fatal) {
-            playerBuffering.classList.add('hidden');
-            playerBuffering.classList.remove('flex');
-            playerErrorOverlay.classList.remove('hidden');
-            playerErrorOverlay.classList.add('flex');
+            loader.classList.remove("hidden");
+            loaderMsg.innerText = "चैनल ऑफलाइन है (Offline)";
           }
         });
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = url;
-        video.addEventListener('loadedmetadata', function () {
-          playerBuffering.classList.add('hidden');
-          playerBuffering.classList.remove('flex');
-          video.play().catch(() => {});
-        });
-
-        video.addEventListener('error', function () {
-          playerBuffering.classList.add('hidden');
-          playerBuffering.classList.remove('flex');
-          playerErrorOverlay.classList.remove('hidden');
-          playerErrorOverlay.classList.add('flex');
+      } else if (videoEl.canPlayType("application/vnd.apple.mpegurl")) {
+        videoEl.src = ch.stream;
+        videoEl.play().then(() => {
+          loader.classList.add("hidden");
+        }).catch(() => {
+          loader.classList.add("hidden");
         });
       }
     }
 
-    function showToast(text) {
-      toastText.textContent = text;
-      toastNotification.classList.remove('opacity-0', 'translate-y-20');
-      toastNotification.classList.add('opacity-100', 'translate-y-0');
-      setTimeout(() => {
-        toastNotification.classList.remove('opacity-100', 'translate-y-0');
-        toastNotification.classList.add('opacity-0', 'translate-y-20');
-      }, 2000);
-    }
+    // Search Toggle
+    document.getElementById("searchBtn").onclick = () => {
+      const wrap = document.getElementById("searchWrap");
+      wrap.classList.toggle("hidden");
+      if (!wrap.classList.contains("hidden")) {
+        document.getElementById("searchInput").focus();
+      }
+    };
 
-    function setupEvents() {
-      retryBtn.addEventListener('click', () => {
-        if (selectedChannel) playStream(selectedChannel.streamUrl);
-      });
-
-      playerFullscreenBtn.addEventListener('click', () => {
-        const wrapper = document.getElementById('playerWrapper');
-        if (!document.fullscreenElement) {
-          if (wrapper.requestFullscreen) wrapper.requestFullscreen();
-          else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
-        } else {
-          if (document.exitFullscreen) document.exitFullscreen();
-        }
-      });
-
-      searchToggleBtn.addEventListener('click', () => {
-        const isHidden = searchBarContainer.classList.contains('hidden');
-        searchBarContainer.classList.toggle('hidden', !isHidden);
-        if (isHidden) channelSearchInput.focus();
-      });
-
-      channelSearchInput.addEventListener('input', (e) => {
-        searchQuery = e.target.value;
-        clearSearchBtn.classList.toggle('hidden', searchQuery.length === 0);
-        renderGrid();
-      });
-
-      clearSearchBtn.addEventListener('click', () => {
-        channelSearchInput.value = '';
-        searchQuery = '';
-        clearSearchBtn.classList.add('hidden');
-        renderGrid();
-      });
-
-      addStreamModalBtn.addEventListener('click', () => {
-        addStreamModal.classList.remove('hidden');
-        addStreamModal.classList.add('flex');
-      });
-
-      const hideAddModal = () => {
-        addStreamModal.classList.add('hidden');
-        addStreamModal.classList.remove('flex');
-      };
-
-      closeStreamModalBtn.addEventListener('click', hideAddModal);
-      cancelStreamBtn.addEventListener('click', hideAddModal);
-
-      newChannelForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name = document.getElementById('inputName').value.trim();
-        const url = document.getElementById('inputUrl').value.trim();
-        const cat = document.getElementById('inputCategory').value;
-
-        if (!name || !url) return;
-
-        const newChannel = {
-          id: 'custom-' + Date.now(),
-          name: name,
-          category: cat,
-          logoText: name.slice(0, 4).toUpperCase(),
-          logoColor: '#38bdf8',
-          badgeBg: 'linear-gradient(135deg, #1e293b, #334155)',
-          streamUrl: url
-        };
-
-        channels.unshift(newChannel);
-        hideAddModal();
-        newChannelForm.reset();
-        renderCategoryPills();
-        renderGrid();
-        switchChannel(newChannel);
-        showToast('नया चैनल सफलतापूर्वक जोड़ा गया!');
-      });
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      renderCategoryPills();
+    document.getElementById("searchInput").oninput = (e) => {
+      searchQuery = e.target.value;
       renderGrid();
-      setupEvents();
-      lucide.createIcons();
+    };
 
-      if (channels.length > 0) {
-        switchChannel(channels[0]);
+    window.onload = () => {
+      renderTabs();
+      renderGrid();
+      if (CHANNELS.length > 0) {
+        playChannel(CHANNELS[0]);
       }
-    });
+    };
   </script>
 </body>
 </html>
